@@ -31,12 +31,12 @@ do $$ declare t record; r text; begin
 end $$;
 reset search_path;
 ''')
- (ROOT/'openbot_local/fresh-install.sql').write_text('\n'.join(chunks))
+ (ROOT/'openbot_local/fresh-install.sql').write_text('\n'.join(chunks),newline='\n')
 
 def replace(path,old,new):
  p=TARGET/path;s=p.read_text()
  if s.count(old)!=1:raise RuntimeError(f'Pinned source marker changed: {path}: {old[:70]}')
- p.write_text(s.replace(old,new))
+ p.write_text(s.replace(old,new),newline='\n')
 
 def prepare():
  manifest=json.loads((ROOT/'vendor/openbot-source.json').read_text())
@@ -53,13 +53,13 @@ def prepare():
     intelligence: {apiUrl: "", gatewayWsUrl: "", apiKey: ""} };
 }
 '''+s[b:]
- s=s.replace('mode: "intelligence";','mode: "local";');p.write_text(s)
+ s=s.replace('mode: "intelligence";','mode: "local";');p.write_text(s,newline='\n')
  # No hosted client is constructed. Existing narrow thread/lock ports use our SQL implementation.
  p=TARGET/'server/src/intelligence-client.ts';s=p.read_text();a=s.index('export function createIntelligenceClient(')
  s=s[:a]+'''export function createIntelligenceClient(_settings?: unknown): CopilotKitIntelligence {
   return createLocalRuntimeClient();
 }
-''';s='import {createLocalRuntimeClient} from "./local-runtime";\n'+s;p.write_text(s)
+''';s='import {createLocalRuntimeClient} from "./local-runtime";\n'+s;p.write_text(s,newline='\n')
  p=TARGET/'server/src/index.ts';s=p.read_text()
  s=s.replace('  CopilotKitIntelligence,\n  IntelligenceAgentRunner,','  type CopilotKitIntelligence,')
  s='import {initializeLocalRuntime, createLocalRuntimeClient, PersistentAgentRunner} from "./local-runtime";\n'+s
@@ -70,7 +70,7 @@ def prepare():
  s=s[:a]+'const routineAgentRunner = new PersistentAgentRunner();'+s[b:]
  a=s.index('void reportIntelligenceEntitlement({');b=s.index('\n});',a)+4
  s=s[:a]+'// Local fork: hosted Intelligence entitlements are not requested.'+s[b:]
- p.write_text(s)
+ p.write_text(s,newline='\n')
  p=TARGET/'server/src/copilot.ts';s=p.read_text()
  s='import {createLocalRuntimeClient, PersistentAgentRunner} from "./local-runtime";\n'+s
  a=s.index('  const intelligenceClient: CopilotKitIntelligence =');b=s.index('\n  const runtime = new CopilotRuntime(',a)
@@ -81,7 +81,7 @@ def prepare():
  s=s.replace('    identifyUser,','    runner: new PersistentAgentRunner(),')
  s=s.replace('    learning,\n    /**','    learning: learning as LearningRuntime | undefined,\n    /**')
  s=s.replace('    intelligence: intelligenceClient,\n    licenseToken: intelligence.licenseToken,','')
- p.write_text(s)
+ p.write_text(s,newline='\n')
  replace('server/src/agents/handoff-wiring.ts','import { IntelligenceAgentRunner } from "@copilotkit/runtime/v2";','import { PersistentAgentRunner as IntelligenceAgentRunner } from "../local-runtime";')
  # Harden the local single-user HTTP boundary against DNS rebinding and cross-origin writes.
  p=TARGET/'server/src/app.ts';s=p.read_text();needle='  const app = new Hono'
@@ -97,14 +97,14 @@ def prepare():
       return c.json({error:"Cross-origin access denied"},403);
     await next();
   });
-'''+s[end:];p.write_text(s)
+'''+s[end:];p.write_text(s,newline='\n')
  # Fresh-install migrations use a private schema and retain no obsolete document vector index.
  for p in (TARGET/'server/drizzle').glob('*.sql'):
   s=p.read_text().replace('"public".','"openbot".').replace('public.','openbot.')
   s=s.replace('CREATE EXTENSION IF NOT EXISTS vector;','-- Obsolete document index is removed by migration 0010; no extension needed.')
   s=s.replace('"embedding" vector(1536)','"embedding" bytea')
   s=s.replace('DROP EXTENSION IF EXISTS "vector";','-- Never remove a database-wide extension used by another application.')
-  p.write_text(s)
+  p.write_text(s,newline='\n')
  # Every database connection, including work queues and listeners, uses the same private search path.
  # DATABASE_URL carries search_path and the launcher checks it before startup.
  generate_install_sql()
