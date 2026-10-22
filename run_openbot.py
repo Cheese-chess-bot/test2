@@ -4,17 +4,25 @@ from pathlib import Path
 from setup_integrations import ROOT,bun_path,write_tenant
 from start_jevie import load_env
 from jevie_models import OPENBOT_MODEL
+from urllib.parse import urlsplit,urlunsplit,parse_qsl,urlencode
 
-def configuration():
+def database_url(value):
+    parts=urlsplit(value)
+    if parts.scheme not in ('postgres','postgresql'):raise ValueError('DATABASE_URL must be a PostgreSQL connection string')
+    if parts.port==6543:raise ValueError('Use the Supabase Session pooler on 5432, not transaction pooling')
+    params=dict(parse_qsl(parts.query));params['search_path']='openbot,public,extensions'
+    return urlunsplit(parts._replace(query=urlencode(params)))
+
+def configuration(demo=False):
     load_env(ROOT/'.env')
-    required=('OPENROUTER_API_KEY','INTELLIGENCE_API_KEY','DATABASE_URL')
+    required=('DATABASE_URL',) if demo else ('OPENROUTER_API_KEY','DATABASE_URL')
     missing=[name for name in required if not os.getenv(name)]
-    path=ROOT/'.integrations'/'openbot';bun=bun_path()
+    path=ROOT/'.integrations'/'openbot-local';bun=bun_path()
     if not bun:missing.append('Bun (run setup_integrations.py --install-openbot)')
     if not (path/'node_modules').exists():missing.append('OpenBot dependencies')
     return path,bun,missing
 
-def environment(model):
+def environment(model,demo=False):
     # Do not forward broker credentials or direct-provider keys to OpenBot.
     env={k:v for k,v in os.environ.items() if k in ('PATH','HOME','USERPROFILE','SYSTEMROOT','TMPDIR','TEMP','TMP','LANG')}
     runtime=ROOT/'runtime';runtime.mkdir(exist_ok=True)
@@ -32,26 +40,26 @@ def environment(model):
         target.write_text('\n'.join(lines)+'\nJEVIE_AGENT_TOKEN='+token+'\n');target.chmod(0o600)
         print('Generated local endpoint token. Restart Jevie to load it.')
     tenant=runtime/'openbot-tenant';write_tenant(tenant,model)
-    env.update(DATABASE_URL=os.environ['DATABASE_URL'],KEY_ENCRYPTION_KEY=saved['encryption'],WORKER_SHARED_SECRET=saved['worker'],
+    env.update(DATABASE_URL=database_url(os.environ['DATABASE_URL']),KEY_ENCRYPTION_KEY=saved['encryption'],WORKER_SHARED_SECRET=saved['worker'],
         OPENBOT_SINGLE_USER='true',NODE_ENV='development',PORT='3001',SERVER_PORT='3001',APP_PORT='3010',
-        TENANT_PACKAGE_DIR=str(tenant),INTELLIGENCE_API_KEY=os.environ['INTELLIGENCE_API_KEY'],
-        INTELLIGENCE_API_URL='https://api.intelligence.copilotkit.ai',INTELLIGENCE_GATEWAY_WS_URL='wss://realtime.intelligence.copilotkit.ai',
-        OPENAI_API_KEY=os.environ['OPENROUTER_API_KEY'],OPENAI_BASE_URL='https://openrouter.ai/api/v1',BOT_MODEL=model,AGENT_BOT_MODEL=model,
+        TENANT_PACKAGE_DIR=str(tenant),COPILOTKIT_TELEMETRY_DISABLED='true',DO_NOT_TRACK='1',OPENBOT_SELF_HOST_BANNER='false',
+        OPENBOT_OFFLINE='true' if demo else 'false',
+        OPENAI_API_KEY=os.getenv('OPENROUTER_API_KEY',''),OPENAI_BASE_URL='https://openrouter.ai/api/v1',BOT_MODEL=model,AGENT_BOT_MODEL=model,
         MANAGED_AGENT_AG_UI_URL='http://127.0.0.1:8765/api/ag-ui',MANAGED_AGENT_TOKEN=token,AGENT_ENDPOINT_ALLOWED_HOSTS='127.0.0.1:8765',
         AGENT_STALL_TIMEOUT_MS='600000',OPENBOT_LEARNING_AUTO_ASSIGN='false',OPENBOT_MEMORY_SOURCE_DEFAULTS='false',OPENBOT_PROACTIVE_DEFAULTS='false')
     return env
 
 def main():
-    parser=argparse.ArgumentParser();parser.add_argument('--check',action='store_true');parser.add_argument('--model',default=OPENBOT_MODEL);args=parser.parse_args()
-    path,bun,missing=configuration()
+    parser=argparse.ArgumentParser();parser.add_argument('--check',action='store_true');parser.add_argument('--demo',action='store_true');parser.add_argument('--model',default=OPENBOT_MODEL);args=parser.parse_args()
+    path,bun,missing=configuration(args.demo)
     if missing:
         print('OpenBot cannot start yet. Missing: '+', '.join(missing));return 1
     if args.check:print('Required configuration and installation are present. Authentication and database connectivity are not yet verified.');return 0
     if '/' not in args.model:raise ValueError('Use an exact OpenRouter provider/model ID')
-    env=environment(args.model)
+    env=environment(args.model,args.demo)
     env['PATH']=str(Path(bun).parent)+os.pathsep+env.get('PATH','')
     # Uses the official migration runner and official server, with a loopback binding.
-    subprocess.run([bun,'server/scripts/migrate.ts'],cwd=path,env=env,check=True)
+    subprocess.run([bun,str(ROOT/'openbot_local'/'migrate.ts')],cwd=path,env=env,check=True)
     subprocess.run([bun,'scripts/generate-app-config.ts'],cwd=path,env=env,check=True)
     # Upstream has no bind-host option. Build a local copy with just its listener
     # bound to loopback; preserve the pinned source and all server functionality.
@@ -59,7 +67,7 @@ def main():
     launcher=loopback_server(path,bun,env)
     processes=[]
     try:
-        processes.append(subprocess.Popen([bun,str(launcher)],cwd=path,env=env))
+        processes.append(subprocess.Popen([bun,'--preload',str(ROOT/'openbot_local'/'network-policy.ts'),str(launcher)],cwd=path,env=env))
         processes.append(subprocess.Popen([bun,'--bun','node_modules/vite/bin/vite.js','--host','127.0.0.1','--port','3010'],cwd=path/'app',env=env))
         print('OpenBot: http://127.0.0.1:3010 — start Jevie separately on port 8765.')
         while all(p.poll() is None for p in processes):time.sleep(.5)

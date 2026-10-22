@@ -1,4 +1,4 @@
-"""Download pinned official Hermes/OpenBot sources for a local installation."""
+"""Install pinned Hermes and the bundled Jevie OpenBot fork."""
 import argparse,json,os,shutil,subprocess,sys
 from pathlib import Path
 from jevie_models import OPENBOT_MODEL
@@ -70,10 +70,11 @@ def main():
   exe=path/'.venv'/('Scripts/python.exe' if os.name=='nt' else 'bin/python')
   print('Add locally to .env:\nHERMES_SOURCE='+str(path)+'\nHERMES_PYTHON='+str(exe))
  if args.openbot or args.install_openbot:
-  path=checkout('openbot')
+  from openbot_local.patch import prepare
+  path=prepare()
   tenant=ROOT/'runtime'/'openbot-tenant';write_tenant(tenant,args.openbot_model)
   if args.install_openbot:install_openbot(path)
   print('OpenBot source: '+str(path))
   print('Custom tenant: '+str(tenant))
-  print('Run python run_openbot.py --check. Add your OpenRouter, PostgreSQL and CopilotKit Intelligence settings to .env. No service has been started.')
+  print('Run python run_openbot.py --check. Add OpenRouter and PostgreSQL/Supabase DATABASE_URL to .env. No CopilotKit Intelligence key is used. No service has been started.')
 if __name__=='__main__':main()

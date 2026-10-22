@@ -10,3 +10,5 @@ __pycache__/
 node_modules/
 *.sqlite*
 *.log
+supabase/.temp/
+openbot_local/fresh-install.sql

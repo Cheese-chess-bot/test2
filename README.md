@@ -25,7 +25,7 @@ For paper trading, copy `.env.example` to `.env`, add OpenRouter and Alpaca **pa
 | Strategy invention | Models may write new Python indicators and buy/sell/hold rules, beyond the three retained baseline families |
 | Iterative debate | Proposal, objections, validation, revision and consensus across 1–12 rounds per research budget; ongoing user discussion persists across turns |
 | Hermes evolution | Official `AIAgent` installed and import-checked; per-stock lessons become inputs to later research. Authenticated reflection still requires your key |
-| OpenBot | Official source/dependencies installed; actual frontend built with the Jevie tenant. AG-UI connects its remote coworker to Jevie; server startup requires PostgreSQL and a CopilotKit Intelligence project key |
+| OpenBot | Complete pinned MIT source bundled in this repo; Jevie fork runs without CopilotKit Intelligence. PostgreSQL stores chat history and run leases; offline API/UI, chat and restart recovery verified |
 | Alpaca paper/live | Separate hosts, credentials and databases; live launch and account checks implemented. No authenticated broker execution was performed during development |
 | Actual fees | Broker activity ingestion, CSV import, explicit unmatched-fee assignment, partial-fill allocation and retrospective net P/L correction |
 | All seven judgments | ENV, TOX, regime, direction, liquidity, inventory and execution health control orders; tests cover the engine's ENV entry block and protective exit |
@@ -49,7 +49,7 @@ The four `:free` IDs and their zero input/output token prices were checked again
 
 The catalog picker includes text models across providers. Strategy-room badges follow configured selections, and messages show the returned model ID. On the first launch after this update, stored roles still set to the former defaults migrate to this lineup; custom IDs are preserved. Later explicit selections are retained across restarts. The listed defaults are configured, **not evidence that authenticated inference has run**. Review each provider's data policy before sending private information; the [free NVIDIA route](https://openrouter.ai/nvidia/nemotron-3.5-super-vl:free) may use prompts and outputs for model improvement.
 
-OpenRouter is the only **model service**, but Alpaca still requires separate broker credentials. The current pinned OpenBot server also requires PostgreSQL and a CopilotKit Intelligence project key, as described below and in [INTEGRATIONS.md](INTEGRATIONS.md). Removing that infrastructure dependency is not part of this lineup update.
+OpenRouter is the only **model service**. Alpaca still needs broker credentials, and Supabase supplies the PostgreSQL database. **No CopilotKit Intelligence API key, license token or subscription is required by this fork.** The complete OpenBot source is bundled in `vendor/openbot-source.tar.gz`; `openbot_local/` contains the reproducible changes. See [the setup guide](INTEGRATIONS.md#openbot-without-copilotkit-intelligence). Hosting and OpenRouter usage remain subject to their own limits; Jev remains paid.
 
 ## ENV and TOX from the supplied Jev loop
 
@@ -110,7 +110,19 @@ Broker fills already include execution slippage, so it is not charged twice. Net
 
 ## Hermes and OpenBot
 
-See [INTEGRATIONS.md](INTEGRATIONS.md). These are pinned official source installations, not replacement bots. Hermes reflects on evidence and writes per-stock research lessons. It evolves instructions and subsequent strategy proposals, not model weights or risk code. OpenBot uses its supported remote AG-UI coworker architecture and the same Jevie engine, state and controller. OpenBot does not create a second trading loop.
+See [INTEGRATIONS.md](INTEGRATIONS.md). Hermes uses its pinned official source; OpenBot uses the bundled upstream source with the documented Jevie runtime fork. Hermes reflects on evidence and writes per-stock research lessons. It evolves instructions and subsequent strategy proposals, not model weights or risk code. OpenBot uses its supported remote AG-UI coworker architecture and the same Jevie engine, state and controller. OpenBot does not create a second trading loop.
+
+## OpenBot without an Intelligence key
+
+```bash
+python setup_integrations.py --install-openbot
+python run_openbot.py --check
+python run_openbot.py
+```
+
+Set `OPENROUTER_API_KEY` and the Supabase **Session pooler PostgreSQL connection string** as `DATABASE_URL` in your local `.env`. The URL comes from Supabase **Connect → Session pooler** and uses port **5432**. It is not the project HTTPS URL or publishable key. The schema has already been installed in the connected Jevie Supabase project; the launcher verifies it on startup. Start Jevie in a second terminal, then open **http://127.0.0.1:3010**. Detailed instructions and verification limits are in [INTEGRATIONS.md](INTEGRATIONS.md).
+
+This is a local, single-operator application. It supports 2–5 Jevie stock workers under one OpenBot controller. PostgreSQL persists OpenBot conversations; Jevie keeps trading state and Hermes lessons in its existing local stores. Hermes supplies strategy reflection. Hosted Intelligence Learning, managed channels and enterprise services are not recreated or included.
 
 ## Commands and tests
 
@@ -121,6 +133,11 @@ Plain messages such as “Compare momentum with a volatility filter” continue 
 ```bash
 python -m unittest test_jevie test_upgrades -v
 python run_openbot.py --check
+# Optional complete OpenBot offline integration check (after installing OpenBot):
+npm ci --prefix openbot_local
+node openbot_local/smoke.mjs
 ```
+
+The OpenBot check boots its real API/UI, calls the real Jevie AG-UI endpoint, verifies saved chat after database/API restart, and checks ownership, competing leases and failed writes using a local PGlite PostgreSQL test engine. It needs no API keys and places no orders. Production uses PostgreSQL/Supabase, not PGlite.
 
 Tests cover chronology, holdout reuse, generated-code isolation/timeouts, model diversity/revisions, all seven policy inputs, ENV order control, live endpoint gating, actual-fee arithmetic, partial fills, persistent state, HTTP protection and AG-UI streaming. Automated checks and offline browser QA do not establish trading profitability or authenticated service readiness. Supply credentials locally to test those integrations. `.env`, broker state, runtime lessons and downloaded dependencies are excluded from Git.
