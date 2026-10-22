@@ -3,6 +3,7 @@ import argparse,base64,json,os,secrets,subprocess,time
 from pathlib import Path
 from setup_integrations import ROOT,bun_path,write_tenant
 from start_jevie import load_env
+from jevie_models import OPENBOT_MODEL
 
 def configuration():
     load_env(ROOT/'.env')
@@ -41,7 +42,7 @@ def environment(model):
     return env
 
 def main():
-    parser=argparse.ArgumentParser();parser.add_argument('--check',action='store_true');parser.add_argument('--model',default='google/gemini-4-argon');args=parser.parse_args()
+    parser=argparse.ArgumentParser();parser.add_argument('--check',action='store_true');parser.add_argument('--model',default=OPENBOT_MODEL);args=parser.parse_args()
     path,bun,missing=configuration()
     if missing:
         print('OpenBot cannot start yet. Missing: '+', '.join(missing));return 1

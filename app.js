@@ -17,7 +17,12 @@ function initForms(){const c=state.config;$('from').value=c.start;$('through').v
  if(!c.symbols.includes(selected))selected=c.symbols[0];$('selected').innerHTML=c.symbols.map(s=>`<option ${s===selected?'selected':''}>${s}</option>`).join('');initialized=true;
 }
 async function selectStock(s){selected=s;$('selected').value=s;chatLast='';render();await chat();}
+function renderParticipants(models){
+ const roles=['researcher','challenger','critic','decider'],labels={'google/gemma-4-31b-it:free':'Gemma','recursive/flint-v1.0:free':'Flint','cohere/north-mini-code:free':'North Mini','nvidia/nemotron-3.5-super-vl:free':'Nemotron'};
+ $('participants').innerHTML=roles.map((role,i)=>`<span class="avatar participant-${i}" title="${esc(role+': '+models[role])}">${esc(models[role].split('/')[0][0]?.toUpperCase()||'?')}</span>`).join('')+`<span>${roles.map(role=>esc(labels[models[role]]||models[role].split('/')[0]||'Unselected')).join(' · ')}</span>`;
+}
 function render(){if(!state)return;const w=state.workers[selected],r=state.reports[selected],c=state.config,b=w.battery?.answers;
+ renderParticipants(c.models);
  $('mode').textContent=state.mode;$('footer-mode').textContent=state.mode==='DEMO'?'SYNTHETIC DATA · NO BROKER ORDERS':'ALPACA '+state.mode+' · OPENROUTER ONLY';
  $('mode').className='badge '+(state.mode==='LIVE'?'red':'');$('start').textContent=state.mode==='LIVE'?'Start LIVE orders ↗':'Start workers ↗';
  $('market').textContent=state.mode==='DEMO'?'Offline demo':state.clock?(state.clock.is_open?'Market open':'Market closed'):'Alpaca disconnected';

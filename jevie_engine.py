@@ -10,9 +10,10 @@ from jevie_clients import OpenRouter,Alpaca,APIError
 from jevie_research import Research
 from jevie_policy import compose_policy
 from jevie_fees import normalize,reconcile_view,import_csv
+from jevie_models import DEFAULT_MODELS,MODEL_LINEUP_VERSION,configured_models
 
 DEFAULT=dict(symbols=['NVDA','AMD'],timeframe='1Day',start='2022-01-01',end=(date.today()-timedelta(days=1)).isoformat(),fee_bps=1,slippage_bps=3,auto_research=False,debate_rounds=3,diverse_models=True,
- models=dict(researcher='google/gemini-4-argon',challenger='openai/gpt-6.1-sol',critic='anthropic/claude-sonnet-5.5',decider='moonshotai/kimi-k3',evolver='anthropic/claude-sonnet-5.5'))
+ models=DEFAULT_MODELS.copy())
 
 class App:
     def __init__(self,root, demo=False,live=False):
@@ -20,7 +21,10 @@ class App:
         self.store=Store(self.root/'jevie.sqlite');self.lock=threading.RLock();self.stop=threading.Event()
         if demo and live:raise ValueError('Demo cannot use live execution')
         self.config={**copy.deepcopy(DEFAULT),**self.store.get('config',{})};self.running=False;self.jobs={};self.workers={s:dict(symbol=s,status='STANDBY',signal='hold',reason='Start after configuration',battery=None,price=None) for s in TICKERS}
-        self.config['models']={k:self.config['models'].get(k) or v for k,v in DEFAULT['models'].items()}
+        upgrade_models=self.store.get('model_lineup_version',0)<MODEL_LINEUP_VERSION
+        self.config['models']=configured_models(self.config['models'],upgrade_legacy=upgrade_models)
+        if upgrade_models:
+            self.store.put('config',self.config);self.store.put('model_lineup_version',MODEL_LINEUP_VERSION)
         self.router=OpenRouter();self.broker=Alpaca(live);self.research=Research(self);self.pool=ThreadPoolExecutor(max_workers=5)
         self.battery_jobs={};self.account=None;self.clock=None;self.last_error='';self.last_sync=None;self.history={};self.fee_sync_at=0;self.assets={}
         self.base_equity=self.store.get('base_equity');self.peak=self.store.get('peak_equity',0)

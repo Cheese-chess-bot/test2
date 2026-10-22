@@ -39,7 +39,8 @@ class OpenRouter:
         return dict(answers=battery_validate(data.get('answers')),model=data.get('model','typesafe/jev-1.14'),latency_ms=round((time.time()-t)*1000),as_of=time.time(),usage=data.get('usage',{}))
     @staticmethod
     def models():
-        return [{'id':m['id'],'name':m.get('name',m['id'])} for m in request('https://openrouter.ai/api/v1/models')['data'] if m['id'].split('/')[0] in ('openai','anthropic','google','moonshotai')]
+        return [{'id':m['id'],'name':m.get('name',m['id'])} for m in request('https://openrouter.ai/api/v1/models')['data']
+                if 'text' in m.get('architecture',{}).get('output_modalities',['text'])]
 
 class Alpaca:
     def __init__(self,live=False):

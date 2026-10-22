@@ -1,6 +1,7 @@
 """Download pinned official Hermes/OpenBot sources for a local installation."""
 import argparse,json,os,shutil,subprocess,sys
 from pathlib import Path
+from jevie_models import OPENBOT_MODEL
 ROOT=Path(__file__).resolve().parent
 SOURCES={
  'hermes':('https://github.com/NousResearch/hermes-agent.git','92663ae8054ae81f207f46d83512d3f879dc698d'),
@@ -57,7 +58,7 @@ await import(ENTRY);
  return output
 
 def main():
- p=argparse.ArgumentParser();p.add_argument('--hermes',action='store_true');p.add_argument('--openbot',action='store_true');p.add_argument('--openbot-model',default='google/gemini-4-argon');p.add_argument('--install-hermes',action='store_true');p.add_argument('--install-openbot',action='store_true');args=p.parse_args()
+ p=argparse.ArgumentParser();p.add_argument('--hermes',action='store_true');p.add_argument('--openbot',action='store_true');p.add_argument('--openbot-model',default=OPENBOT_MODEL);p.add_argument('--install-hermes',action='store_true');p.add_argument('--install-openbot',action='store_true');args=p.parse_args()
  if not (args.hermes or args.openbot or args.install_hermes or args.install_openbot):p.error('Select --install-hermes and/or --install-openbot')
  if '/' not in args.openbot_model:p.error('--openbot-model must be an exact OpenRouter model ID')
  if args.hermes or args.install_hermes:

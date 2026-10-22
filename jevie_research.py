@@ -47,7 +47,7 @@ class Research:
             candidates=[(Strategy.parse(override),'Frozen external proposal')]
         elif demo:
             candidates=[(Strategy(),'Synthetic fixture: trend baseline'),(Strategy(family='reversion',fast=8,slow=30),'Synthetic fixture: reversion baseline')]
-            a.chat(symbol,'fixture','Offline workflow test. No Gemini, ChatGPT, Kimi, Claude or Hermes call is simulated as real.',job)
+            a.chat(symbol,'fixture','Offline workflow test. No model or Hermes call is simulated as real.',job)
         else:
             a.chat(symbol,'system','Historical hypothesis research; current news is excluded from historical selection to avoid future-data leakage.',job)
             candidates,prepared,index,consensus=make_candidates(a,symbol,job,cfg,context,bars,train_end,val_end)

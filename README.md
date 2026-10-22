@@ -21,7 +21,7 @@ For paper trading, copy `.env.example` to `.env`, add OpenRouter and Alpaca **pa
 | Capability | Implementation and verification boundary |
 |---|---|
 | Five panels | Market/status dots; strategy discussion; historical backtester; fills/fees/P&L; seven-answer battery and stock selector |
-| Model variety | Four distinct models from four providers by default; diversity checks require four IDs across at least three providers |
+| Model variety | Four distinct free models from four providers by default; diversity checks require four IDs across four providers |
 | Strategy invention | Models may write new Python indicators and buy/sell/hold rules, beyond the three retained baseline families |
 | Iterative debate | Proposal, objections, validation, revision and consensus across 1–12 rounds per research budget; ongoing user discussion persists across turns |
 | Hermes evolution | Official `AIAgent` installed and import-checked; per-stock lessons become inputs to later research. Authenticated reflection still requires your key |
@@ -30,18 +30,26 @@ For paper trading, copy `.env.example` to `.env`, add OpenRouter and Alpaca **pa
 | Actual fees | Broker activity ingestion, CSV import, explicit unmatched-fee assignment, partial-fill allocation and retrospective net P/L correction |
 | All seven judgments | ENV, TOX, regime, direction, liquidity, inventory and execution health control orders; tests cover the engine's ENV entry block and protective exit |
 
-### Default OpenRouter roles
+### Final OpenRouter lineup
 
-| Role | Exact model ID |
-|---|---|
-| Researcher | `google/gemini-4-argon` |
-| Challenger | `openai/gpt-6.1-sol` |
-| Critic | `anthropic/claude-sonnet-5.5` |
-| Decider | `moonshotai/kimi-k3` |
-| Hermes evolver | `anthropic/claude-sonnet-5.5` |
-| Jev judgment battery | `typesafe/jev-1.14` via the Decisions API |
+All model inference uses one **OpenRouter API key**. The strategy room uses four different model makers; Jev supplies trading judgments; Hermes uses a separate reflection session to improve later research.
 
-The four chat model IDs were checked against OpenRouter's catalog on 2026-10-22. Choose replacements in **Connections** if availability changes. Speakers show the actual returned model ID. There is no fallback that impersonates a missing model. The listed defaults are configured, **not evidence that authenticated inference has run**.
+| Role | Model | Exact OpenRouter ID | Job |
+|---|---|---|---|
+| Researcher | Google Gemma 4 31B | `google/gemma-4-31b-it:free` | Propose strategies and revisions |
+| Challenger | Recursive Flint | `recursive/flint-v1.0:free` | Offer alternatives and challenge assumptions |
+| Critic | Cohere North Mini Code | `cohere/north-mini-code:free` | Review strategy logic, costs and validation evidence |
+| Decider | NVIDIA Nemotron 3.5 Super VL | `nvidia/nemotron-3.5-super-vl:free` | Select a candidate or request another experiment |
+| Hermes evolver | NVIDIA Nemotron 3.5 Super VL | `nvidia/nemotron-3.5-super-vl:free` | Reflect through Hermes and save per-stock lessons |
+| Jev / Jevie | Typesafe Jev 1.14 — **paid** | `typesafe/jev-1.14` | Seven trading judgments through the Decisions API |
+
+OpenBot's interface model also defaults to the same free NVIDIA model. Its installer and launcher share the central defaults in `jevie_models.py`. OpenBot routes research to the four-model team; Hermes reflections do not replace Jev's trading judgments. Tested strategy rules, Jev judgments and code-owned risk controls jointly determine orders.
+
+The four `:free` IDs and their zero input/output token prices were checked against [OpenRouter's catalog](https://openrouter.ai/api/v1/models) on 2026-10-22. Free routes have availability and request limits; they do not promise unlimited or uninterrupted service. See [OpenRouter's limits](https://openrouter.ai/docs/api-reference/limits). **Jev is paid**, using the same key; an account's daily spending ceiling is not free credit or a target budget. This update does not add a monetary spending cap. Round budgets bound debate work, not total daily cost. The default lineup never switches to a paid replacement when a free route fails; errors are surfaced and research stops. You can explicitly choose other models in Connections, including paid models. A missing fresh Jev judgment blocks new entries.
+
+The catalog picker includes text models across providers. Strategy-room badges follow configured selections, and messages show the returned model ID. On the first launch after this update, stored roles still set to the former defaults migrate to this lineup; custom IDs are preserved. Later explicit selections are retained across restarts. The listed defaults are configured, **not evidence that authenticated inference has run**. Review each provider's data policy before sending private information; the [free NVIDIA route](https://openrouter.ai/nvidia/nemotron-3.5-super-vl:free) may use prompts and outputs for model improvement.
+
+OpenRouter is the only **model service**, but Alpaca still requires separate broker credentials. The current pinned OpenBot server also requires PostgreSQL and a CopilotKit Intelligence project key, as described below and in [INTEGRATIONS.md](INTEGRATIONS.md). Removing that infrastructure dependency is not part of this lineup update.
 
 ## ENV and TOX from the supplied Jev loop
 

@@ -15,7 +15,7 @@ def validate_models(cfg):
     if any(not models.get(r) for r in roles):raise ValueError('Select four OpenRouter models in Connections')
     if cfg.get('diverse_models',True):
         ids=[models[r] for r in roles]
-        if len(set(ids))<4 or len({m.split('/')[0] for m in ids})<3:raise ValueError('Diverse debate requires four different models from at least three providers')
+        if len(set(ids))<4 or len({m.split('/')[0] for m in ids})<4:raise ValueError('Diverse debate requires four different models from four providers')
 
 def make_candidates(app,symbol,job,cfg,context,bars,train_end,val_end):
     validate_models(cfg);transcript=[];candidates=[];evaluations=[];index=0

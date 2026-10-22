@@ -8,10 +8,49 @@ from jevie_policy import compose_policy
 from jevie_fees import normalize,import_csv,reconcile_view
 from jevie_sandbox import StrategyProcess,available
 from jevie_debate import make_candidates,validate_models,discuss
-from jevie_clients import Alpaca
+from jevie_clients import Alpaca,OpenRouter,APIError
+from jevie_models import DEFAULT_MODELS,LEGACY_DEFAULT_MODELS
 
 def battery():
     return {k:dict(type=q['type'],noul=.1,score=3,confidence=.9,choice={'regime':'trending','direction':'up'}.get(k,'neutral')) for k,q in QUESTIONS.items()}
+
+class ModelLineupTests(unittest.TestCase):
+    def test_saved_defaults_migrate_once_and_custom_choices_survive(self):
+        with tempfile.TemporaryDirectory() as temp,patch.object(App,'loop'):
+            store=Store(Path(temp)/'jevie.sqlite')
+            cfg=copy.deepcopy(DEFAULT);cfg['symbols']=['TSLA','AAPL']
+            cfg['models']=LEGACY_DEFAULT_MODELS.copy();cfg['models']['critic']='custom/reviewer'
+            del cfg['models']['evolver']
+            store.put('config',cfg);store.db.close()
+            expected={**DEFAULT_MODELS,'critic':'custom/reviewer'}
+            app=App(temp,demo=True)
+            try:
+                self.assertEqual(app.config['models'],expected)
+                self.assertEqual(app.config['symbols'],['TSLA','AAPL'])
+                self.assertEqual(app.store.get('config')['models'],expected)
+                # An explicit later choice, even an old default, must not be migrated again.
+                chosen={**expected,'researcher':LEGACY_DEFAULT_MODELS['researcher']}
+                app.configure({'models':chosen})
+            finally:app.close();app.thread.join(2);app.store.db.close()
+            app=App(temp,demo=True)
+            try:self.assertEqual(app.config['models'],chosen)
+            finally:app.close();app.thread.join(2);app.store.db.close()
+
+    def test_catalog_includes_new_providers_and_custom_text_options(self):
+        ids=list(dict.fromkeys(DEFAULT_MODELS.values()))+['another-maker/custom']
+        data=[dict(id=m,name=m,architecture=dict(output_modalities=['text'])) for m in ids]
+        data.append(dict(id='image-maker/image',architecture=dict(output_modalities=['image'])))
+        with patch('jevie_clients.request',return_value=dict(data=data)):
+            self.assertEqual([m['id'] for m in OpenRouter.models()],ids)
+
+    def test_free_rate_limit_never_calls_a_replacement_model(self):
+        router=OpenRouter('fixture-key');model=DEFAULT_MODELS['researcher']
+        with patch('jevie_clients.request',side_effect=APIError('OpenRouter HTTP 429')) as request:
+            with self.assertRaises(APIError):router.chat(model,[])
+            with self.assertRaisesRegex(APIError,'cooldown'):router.chat(model,[])
+            self.assertEqual(request.call_count,1)
+            self.assertEqual(request.call_args.args[2]['model'],model)
+            self.assertNotIn('models',request.call_args.args[2])
 
 class PolicyTests(unittest.TestCase):
     def test_each_judgment_changes_policy(self):
@@ -115,6 +154,10 @@ class DebateTests(unittest.TestCase):
     def test_duplicate_models_rejected(self):
         cfg=copy.deepcopy(DEFAULT);cfg['models']['critic']=cfg['models']['researcher']
         with self.assertRaises(ValueError):validate_models(cfg)
+    def test_four_ids_from_only_three_providers_rejected(self):
+        cfg=copy.deepcopy(DEFAULT);cfg['models']['challenger']='google/another-model'
+        with self.assertRaisesRegex(ValueError,'four providers'):validate_models(cfg)
+        cfg['diverse_models']=False;validate_models(cfg)
     def test_conversation_is_persistent(self):
         self.app.router.chat.return_value=('What about turnover?',{})
         discuss(self.app,'NVDA','Try shorter holding periods','j')

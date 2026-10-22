@@ -18,6 +18,8 @@ The completed development checks installed/imported the real Hermes `AIAgent`, i
 
 Add `OPENROUTER_API_KEY` locally and select the **evolver** model in Connections. Research invokes Hermes after evaluating an experiment. `/evolve NVDA` reflects on the previous experiment and then runs fresh research using accumulated lessons. Daily evolution is opt-in in panel 5 and runs only while workers are running.
 
+The evolver defaults to `nvidia/nemotron-3.5-super-vl:free` through OpenRouter. It shares a model ID with the strategy decider but uses its own reflection context and per-stock lessons. See the [final lineup](README.md#final-openrouter-lineup) for all four debate providers and the paid Jev judgment model. Free-route failures are surfaced; no paid replacement is selected automatically.
+
 The bridge calls the actual `run_agent.AIAgent` with `provider='openrouter'` and `https://openrouter.ai/api/v1`. Tools, background review, unrelated context files and fallback models are disabled. Broker credentials are not passed in its environment. A separate per-stock home stores generated research lessons and a reusable skill. Reflection does not grant tools, alter risk rules or train model weights. Errors are shown rather than replaced with pretend reflection. Offline demo never calls Hermes.
 
 Authenticated inference remains unverified until you supply your OpenRouter key.
@@ -46,6 +48,8 @@ URL-encode special characters in the database password. Obtain the project key t
 python run_openbot.py --check
 python run_openbot.py
 ```
+
+Both the installer and launcher default OpenBot's interface model to `nvidia/nemotron-3.5-super-vl:free`. An explicit override uses `--openbot-model provider/model-id` during setup and `--model provider/model-id` when launching; pass the launch override each time because the launcher regenerates its tenant configuration. This setting controls OpenBot's interface, while the five Jevie research/evolution roles are configured in Connections.
 
 The launcher checks prerequisites, generates private encryption/endpoint tokens locally, runs upstream database migrations, generates the actual app configuration, and starts the official API/UI. Restart Jevie after the endpoint token is first generated, then open **http://127.0.0.1:3010** for OpenBot and **http://127.0.0.1:8765** for Jevie.
 
