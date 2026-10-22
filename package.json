@@ -1,0 +1,1 @@
+{"name":"jevie-test2","private":true,"scripts":{"dev":"JEVIE_PREVIEW=1 python3 start_jevie.py --demo --host 0.0.0.0 --port 4173 --no-browser"}}

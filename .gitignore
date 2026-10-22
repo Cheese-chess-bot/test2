@@ -1,0 +1,12 @@
+.env
+.env.*
+!.env.example
+runtime/
+.integrations/
+__pycache__/
+*.py[cod]
+.venv/
+.openai/
+node_modules/
+*.sqlite*
+*.log
